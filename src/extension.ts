@@ -4,7 +4,7 @@ import { DEFAULT_EXCLUSION_PATTERNS } from './patterns';
 
 // Get exclusion patterns from settings or use defaults
 function getExclusionPatterns(): string[] {
-    const config = vscode.workspace.getConfiguration('copy-filename-content');
+    const config = vscode.workspace.getConfiguration('coby');
     const userPatterns = config.get<string[]>('excludePatterns', []);
     
     // Combine default patterns with user-defined patterns
@@ -140,7 +140,7 @@ async function processAllWorkspaceFolders(): Promise<string> {
 export function activate(context: vscode.ExtensionContext) {
     // Register the original command
     const copyCommand = vscode.commands.registerCommand(
-        'copy-filename-content.copy',
+        'coby.copy',
         async (uri: vscode.Uri) => {
             try {
                 const stat = await vscode.workspace.fs.stat(uri);
@@ -170,7 +170,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register the new command to copy all workspace folders
     const copyAllCommand = vscode.commands.registerCommand(
-        'copy-filename-content.copyAllWorkspaces',
+        'coby.copyAllWorkspaces',
         async () => {
             try {
                 vscode.window.withProgress({

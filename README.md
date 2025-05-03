@@ -23,10 +23,10 @@ A VS Code extension that allows you to easily copy file names and content to you
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/copy-filename-content.git
+git clone https://github.com/wangqin0/coby.git
 
 # Navigate to the project directory
-cd copy-filename-content
+cd coby
 
 # Install dependencies
 yarn install
@@ -66,7 +66,7 @@ npx @vscode/vsce package
 You can configure additional exclusion patterns in your VS Code settings:
 
 ```json
-"copy-filename-content.excludePatterns": [
+"coby.excludePatterns": [
     "*.log",
     "private_data",
     "some_large_directory"

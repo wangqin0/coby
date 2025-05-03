@@ -1,13 +1,13 @@
 {
-  "name": "copy-filename-content",
-  "displayName": "Copy Filename and Content",
+  "name": "coby",
+  "displayName": "coby",
   "description": "Copy file name and content to clipboard",
   "version": "0.2.0",
   "publisher": "wangqin",
   "icon": "./resources/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wangqin0/copy-filename-content"
+    "url": "https://github.com/wangqin0/coby"
   },
   "engines": {
     "vscode": "^1.74.0"
@@ -20,31 +20,31 @@
   "contributes": {
     "commands": [
       {
-        "command": "copy-filename-content.copy",
+        "command": "coby.copy",
         "title": "Copy Filename and Content"
       },
       {
-        "command": "copy-filename-content.copyAllWorkspaces",
+        "command": "coby.copyAllWorkspaces",
         "title": "Copy All Workspace Content"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "copy-filename-content.copy",
+          "command": "coby.copy",
           "group": "clipboard"
         }
       ],
       "commandPalette": [
         {
-          "command": "copy-filename-content.copyAllWorkspaces"
+          "command": "coby.copyAllWorkspaces"
         }
       ]
     },
     "configuration": {
       "title": "Copy Filename Content",
       "properties": {
-        "copy-filename-content.excludePatterns": {
+        "coby.excludePatterns": {
           "type": "array",
           "default": [],
           "description": "Additional patterns to exclude when copying"
