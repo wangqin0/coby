@@ -1,65 +1,29 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { DEFAULT_EXCLUSION_PATTERNS } from './patterns';
 
 // Get exclusion patterns from settings or use defaults
 function getExclusionPatterns(): string[] {
     const config = vscode.workspace.getConfiguration('copy-filename-content');
     const userPatterns = config.get<string[]>('excludePatterns', []);
     
-    // Default patterns for common build directories
-    const defaultPatterns = [
-        'node_modules',
-        'dist',
-        'build',
-        'bin',
-        'obj',
-        'target',
-        '.git',
-        '.vs',
-        '.idea',
-        'out',
-        'intermediate',
-        '__pycache__',
-        'venv',
-        '.venv',
-        '.next',
-        'cmake',
-        'CMakeFiles',
-        'Debug',
-        'Release',
-        'cmake-build-debug',
-        'cmake-build-release',
-        'cmake-build',
-        '.gradle',
-        'gradle',
-        'gradlew',
-        'gradlew.bat',
-        'package-lock.json',
-        'yarn.lock',
-        'pnpm-lock.yaml',
-        'composer.lock',
-        'Gemfile.lock',
-        'Cargo.lock',
-        'Pipfile.lock',
-        'poetry.lock',
-        'yarn-error.log',
-        'npm-debug.log',
-        'yarn-debug.log',
-        'yarn-error.log',
-        'package.json',
-        '_deps',
-    ];
-    
-    return [...defaultPatterns, ...userPatterns];
+    // Combine default patterns with user-defined patterns
+    return [...DEFAULT_EXCLUSION_PATTERNS, ...userPatterns];
 }
 
 // Check if a path should be excluded
 function shouldExclude(name: string, patterns: string[]): boolean {
-    return patterns.some(pattern => 
-        name === pattern || 
-        name.startsWith(`${pattern}/`) || 
-        name.startsWith(`${pattern}\\`)
-    );
+    // Updated to also handle wildcard patterns like *.log
+    return patterns.some(pattern => {
+        if (pattern.startsWith('*.')) {
+            // Handle wildcard file extensions
+            const extension = pattern.substring(1); // gets ".log" from "*.log"
+            return name.endsWith(extension);
+        }
+        return name === pattern || 
+               name.startsWith(`${pattern}/`) || 
+               name.startsWith(`${pattern}\\`);
+    });
 }
 
 async function isBinaryFile(uri: vscode.Uri): Promise<boolean> {
@@ -86,7 +50,7 @@ async function getDirectoryTree(uri: vscode.Uri, prefix = '', excludePatterns?: 
 
     for (const [name, type] of entries) {
         // Skip if this path should be excluded
-        if (type === vscode.FileType.Directory && shouldExclude(name, excludePatterns)) {
+        if (shouldExclude(name, excludePatterns)) {
             continue;
         }
         
@@ -103,13 +67,20 @@ async function getDirectoryTree(uri: vscode.Uri, prefix = '', excludePatterns?: 
 }
 
 async function getFileView(uri: vscode.Uri): Promise<string | null> {
+    const excludePatterns = getExclusionPatterns();
+    const fileName = path.basename(uri.path);
+    
+    // Skip if this file should be excluded
+    if (shouldExclude(fileName, excludePatterns)) {
+        return null;
+    }
+    
     if (await isBinaryFile(uri)) {
         return null;
     }
 
     try {
         const content = await vscode.workspace.fs.readFile(uri);
-        const fileName = path.basename(uri.path);
         return `${fileName}\n\`\`\`\n${Buffer.from(content).toString('utf8')}\n\`\`\`\n\n`;
     } catch {
         return null;
@@ -146,8 +117,29 @@ async function processDirectory(uri: vscode.Uri): Promise<string> {
     return output;
 }
 
+// New function to process all workspace folders
+async function processAllWorkspaceFolders(): Promise<string> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        throw new Error('No workspace folders are open');
+    }
+    
+    let output = `# Workspace Content\n\n`;
+    
+    // Process each workspace folder
+    for (const folder of workspaceFolders) {
+        output += `## Workspace: ${folder.name}\n\n`;
+        output += await processDirectory(folder.uri);
+        output += `\n\n`;
+    }
+    
+    return output;
+}
+
 export function activate(context: vscode.ExtensionContext) {
-    const disposable = vscode.commands.registerCommand(
+    // Register the original command
+    const copyCommand = vscode.commands.registerCommand(
         'copy-filename-content.copy',
         async (uri: vscode.Uri) => {
             try {
@@ -176,7 +168,39 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    context.subscriptions.push(disposable);
+    // Register the new command to copy all workspace folders
+    const copyAllCommand = vscode.commands.registerCommand(
+        'copy-filename-content.copyAllWorkspaces',
+        async () => {
+            try {
+                vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Copying workspace content...",
+                    cancellable: false
+                }, async (progress) => {
+                    progress.report({ increment: 0 });
+                    
+                    // Process all workspace folders
+                    const content = await processAllWorkspaceFolders();
+                    
+                    // Write to clipboard
+                    await vscode.env.clipboard.writeText(content);
+                    
+                    progress.report({ increment: 100 });
+                    
+                    vscode.window.showInformationMessage(
+                        'Copied all workspace folders content to clipboard!'
+                    );
+                });
+            } catch (error: any) {
+                vscode.window.showErrorMessage(
+                    `Failed to copy content: ${error.message}`
+                );
+            }
+        }
+    );
+
+    context.subscriptions.push(copyCommand, copyAllCommand);
 }
 
 export function deactivate() {}

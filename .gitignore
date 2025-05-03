@@ -4,3 +4,4 @@ out/
 *.vsix
 yarn.lock
 package-lock.json
+.idea/
