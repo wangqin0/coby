@@ -1,4 +1,4 @@
-# Copy Filename and Content
+# coby
 
 A VS Code extension that allows you to easily copy file names and content to your clipboard with just a few clicks. Perfect for sharing code snippets, documenting projects, or quickly transferring file information.
 
@@ -16,7 +16,7 @@ A VS Code extension that allows you to easily copy file names and content to you
 
 1. Open VS Code
 2. Go to Extensions (Ctrl+Shift+X or Cmd+Shift+X)
-3. Search for "Copy Filename and Content"
+3. Search for "coby"
 4. Click Install
 
 ### Manual Installation
@@ -132,9 +132,3 @@ yarn compile
 # Watch for changes
 yarn watch
 ```
-
-## Release Notes
-
-### 0.1.7
-- Fixed various bugs and improved performance
-- Added smart binary file detection
