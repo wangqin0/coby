@@ -2,7 +2,7 @@
   "name": "coby",
   "displayName": "coby",
   "description": "Copy file name and content to clipboard",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "wangqin",
   "icon": "./resources/icon.png",
   "repository": {
@@ -15,7 +15,10 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:coby.copy",
+    "onCommand:coby.copyAllWorkspaces"
+  ],
   "main": "out/extension.js",
   "contributes": {
     "commands": [
@@ -69,4 +72,4 @@
     "eslint": "^8.0.0",
     "typescript": "^4.5.5"
   }
-}
+ }

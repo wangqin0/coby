@@ -29,15 +29,7 @@ export const DEFAULT_EXCLUSION_PATTERNS = [
     'gradlew.bat',
     '_deps',
     
-    // Lock files
-    'package-lock.json',
-    'yarn.lock',
-    'pnpm-lock.yaml',
-    'composer.lock',
-    'Gemfile.lock',
-    'Cargo.lock',
-    'Pipfile.lock',
-    'poetry.lock',
+    // Lock files are handled in LOCK_FILES array
     
     // Log files
     'yarn-error.log',
@@ -52,8 +44,8 @@ export const DEFAULT_EXCLUSION_PATTERNS = [
     'yarn-error.log*',
     'lerna-debug.log*',
     
-    // Package files
-    'package.json',
+    // Package files - moved to always include array
+    // 'package.json',
     
     // Temporary and output directories
     'output',
@@ -106,4 +98,93 @@ export const DEFAULT_EXCLUSION_PATTERNS = [
     '.env.development.local',
     '.env.test.local',
     '.env.production.local'
+];
+
+// Extensions that should always be considered binary
+export const BINARY_FILE_EXTENSIONS = [
+    // Images
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp', '.tiff', '.svg',
+    // Documents and PDFs
+    '.pdf', 
+    // Archives
+    '.zip', '.gz', '.tar', '.rar', '.7z', '.bz2', '.xz',
+    // Executables and libraries
+    '.exe', '.dll', '.so', '.dylib', '.o', '.obj', '.a', '.lib',
+    // Binary and data files
+    '.bin', '.dat', '.db', '.sqlite', '.vsix', '.class',
+    // Media
+    '.mp3', '.mp4', '.avi', '.mov', '.wav', '.ogg', '.flac', '.mkv', '.webm',
+    // Fonts
+    '.ttf', '.woff', '.woff2', '.eot', '.otf',
+    // Other binary formats
+    '.swf', '.fla', '.psd', '.ai', '.eps', '.indd'
+];
+
+// Lock files that should always be excluded (too large)
+export const LOCK_FILES = [
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'composer.lock',
+    'Gemfile.lock',
+    'Cargo.lock',
+    'Pipfile.lock',
+    'poetry.lock',
+    'npm-shrinkwrap.json',
+    'gradle.lockfile',
+    'mix.lock',
+    'Podfile.lock',
+    'pubspec.lock',
+    'flake.lock',
+    'go.sum',
+    'Carthage.resolved',
+    'paket.lock'
+];
+
+// Extensions that should always be considered text
+export const TEXT_FILE_EXTENSIONS = [
+    // Web files
+    '.html', '.htm', '.xhtml', '.css', '.js', '.jsx', '.ts', '.tsx', '.php', '.asp', '.aspx',
+    // Configuration files
+    '.json', '.yaml', '.yml', '.toml', '.ini', '.conf', '.config', '.xml', '.xsd', '.wsdl', '.plist',
+    // Markdown and text
+    '.md', '.markdown', '.txt', '.text', '.rst', '.rtf', '.csv', '.tsv',
+    // Source code
+    '.c', '.cpp', '.h', '.hpp', '.cs', '.java', '.py', '.rb', '.go', '.rs', '.swift',
+    '.kt', '.scala', '.sh', '.bash', '.ps1', '.bat', '.cmd', '.vb', '.fs', '.dart',
+    '.lua', '.pl', '.pm', '.php', '.php5', '.inc', '.hs', '.elm', '.ex', '.exs',
+    '.erl', '.hrl', '.clj', '.cljs', '.groovy', '.gradle', '.r', '.rmd',
+    // Documentation
+    '.tex', '.bib', '.sty',
+    // Other text formats
+    '.sql', '.graphql', '.gql', '.proto', '.pug', '.jade', '.haml', '.vue', '.svelte'
+];
+
+// Files that should always be included regardless of exclusion patterns
+export const ALWAYS_INCLUDE_FILES = [
+    // Package and configuration files
+    'package.json',
+    'tsconfig.json',
+    'composer.json',
+    'bower.json',
+    'manifest.json',
+    'project.json',
+    'README.md',
+    'LICENSE',
+    'Makefile',
+    'Dockerfile',
+    'docker-compose.yml',
+    '.gitignore',
+    '.editorconfig',
+    '.eslintrc.json',
+    '.prettierrc',
+    '.babelrc',
+    '.gitlab-ci.yml',
+    '.travis.yml',
+    'appveyor.yml',
+    'serverless.yml',
+    'gatsby-config.js',
+    'next.config.js',
+    'webpack.config.js',
+    'rollup.config.js',
 ];

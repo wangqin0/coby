@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { DEFAULT_EXCLUSION_PATTERNS } from './patterns';
+import { 
+    DEFAULT_EXCLUSION_PATTERNS, 
+    BINARY_FILE_EXTENSIONS, 
+    TEXT_FILE_EXTENSIONS,
+    ALWAYS_INCLUDE_FILES,
+    LOCK_FILES
+} from './patterns';
 
 // Get exclusion patterns from settings or use defaults
 function getExclusionPatterns(): string[] {
@@ -13,6 +19,23 @@ function getExclusionPatterns(): string[] {
 
 // Check if a path should be excluded
 function shouldExclude(name: string, patterns: string[]): boolean {
+    // Files that we always want to include (override all exclusion patterns)
+    if (ALWAYS_INCLUDE_FILES.includes(name)) {
+        return false;
+    }
+    
+    // Lock files should always be excluded (they're too large)
+    if (LOCK_FILES.includes(name)) {
+        return true;
+    }
+    
+    // Check file extension against the TEXT_FILE_EXTENSIONS list
+    const extension = path.extname(name).toLowerCase();
+    if (TEXT_FILE_EXTENSIONS.includes(extension)) {
+        // For text files, we'll still respect exclusion patterns
+        // This allows excluding specific text files if needed
+    }
+    
     // Updated to also handle wildcard patterns like *.log
     return patterns.some(pattern => {
         if (pattern.startsWith('*.')) {
@@ -26,15 +49,72 @@ function shouldExclude(name: string, patterns: string[]): boolean {
     });
 }
 
+// Improved binary file detection with extension-based approach
 async function isBinaryFile(uri: vscode.Uri): Promise<boolean> {
     try {
-        const buffer = await vscode.workspace.fs.readFile(uri);
-        const sampleSize = Math.min(8192, buffer.length);
-        for (let i = 0; i < sampleSize; i++) {
-            if (buffer[i] === 0) return true;
+        const filePath = uri.fsPath;
+        const extension = path.extname(filePath).toLowerCase();
+        const fileName = path.basename(filePath);
+        
+        // First check: is this a lock file we want to exclude?
+        if (LOCK_FILES.includes(fileName)) {
+            console.log(`Skipping lock file: ${fileName}`);
+            return true;
         }
-        return false;
-    } catch {
+        
+        // Second check: is this a file we always want to include?
+        if (ALWAYS_INCLUDE_FILES.includes(fileName)) {
+            return false;
+        }
+        
+        // Third check: extension-based detection
+        if (BINARY_FILE_EXTENSIONS.includes(extension)) {
+            return true;
+        }
+        
+        if (TEXT_FILE_EXTENSIONS.includes(extension)) {
+            return false;
+        }
+        
+        // Third check: file size check (for files with unknown extensions)
+        const buffer = await vscode.workspace.fs.readFile(uri);
+        
+        // Files that are too large should be considered binary to avoid performance issues
+        if (buffer.length > 1024 * 1024) { // 1MB limit
+            return true;
+        }
+        
+        // Last resort: content-based detection for unknown file types
+        // More sophisticated binary content check
+        const sampleSize = Math.min(4096, buffer.length);
+        let textChars = 0;
+        let nullChars = 0;
+        
+        for (let i = 0; i < sampleSize; i++) {
+            const byte = buffer[i];
+            
+            // Count null bytes
+            if (byte === 0) {
+                nullChars++;
+                // If we have more than a few null bytes, it's probably binary
+                if (nullChars > 3) {
+                    return true;
+                }
+            }
+            
+            // Count text-like bytes
+            if ((byte >= 32 && byte <= 126) || // ASCII printable
+                byte === 9 || byte === 10 || byte === 13) { // Tab, LF, CR
+                textChars++;
+            }
+        }
+        
+        // If most of the content looks like text, it's probably not binary
+        // Consider binary if less than 80% of the content is text-like
+        return (textChars / sampleSize) < 0.8;
+    } catch (error) {
+        console.error(`Error checking if file is binary: ${uri.fsPath}`, error);
+        // If we can't read it, be conservative and consider it binary
         return true;
     }
 }
@@ -69,20 +149,48 @@ async function getDirectoryTree(uri: vscode.Uri, prefix = '', excludePatterns?: 
 async function getFileView(uri: vscode.Uri): Promise<string | null> {
     const excludePatterns = getExclusionPatterns();
     const fileName = path.basename(uri.path);
+    const extension = path.extname(uri.path).toLowerCase();
     
-    // Skip if this file should be excluded
+    // Logging for debugging
+    console.log(`Processing file: ${uri.fsPath}`);
+    
+    // Check for exclusion patterns from settings
     if (shouldExclude(fileName, excludePatterns)) {
+        console.log(`Excluding file based on pattern match: ${uri.fsPath}`);
         return null;
     }
     
-    if (await isBinaryFile(uri)) {
-        return null;
-    }
-
+    // Check if file is binary using our improved detection
     try {
+        if (await isBinaryFile(uri)) {
+            console.log(`Skipping binary file: ${uri.fsPath}`);
+            return null;
+        }
+    
+        // Read the file content with explicit UTF-8 encoding
         const content = await vscode.workspace.fs.readFile(uri);
-        return `${fileName}\n\`\`\`\n${Buffer.from(content).toString('utf8')}\n\`\`\`\n\n`;
-    } catch {
+        let textContent: string;
+        
+        try {
+            textContent = Buffer.from(content).toString('utf8');
+            
+            // Additional validation that the content is actually readable text
+            // If it contains too many replacement characters, it's likely not valid UTF-8
+            const replacementChar = '\uFFFD';
+            const replacementCount = (textContent.match(new RegExp(replacementChar, 'g')) || []).length;
+            
+            if (replacementCount > textContent.length * 0.1) {
+                console.log(`File contains too many invalid UTF-8 characters: ${uri.fsPath}`);
+                return null;
+            }
+            
+            return `${fileName}\n\`\`\`\n${textContent}\n\`\`\`\n\n`;
+        } catch (error) {
+            console.error(`Error converting file content to string: ${uri.fsPath}`, error);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error reading file: ${uri.fsPath}`, error);
         return null;
     }
 }
@@ -92,24 +200,29 @@ async function processDirectory(uri: vscode.Uri): Promise<string> {
     let output = `Directory Tree:\n${await getDirectoryTree(uri, '', excludePatterns)}\n\nFile Contents:\n`;
     
     async function processItem(itemUri: vscode.Uri): Promise<void> {
-        const stat = await vscode.workspace.fs.stat(itemUri);
-        const name = path.basename(itemUri.path);
-        
-        if (stat.type === vscode.FileType.Directory) {
-            // Skip excluded directories
-            if (shouldExclude(name, excludePatterns)) {
-                return;
-            }
+        try {
+            const stat = await vscode.workspace.fs.stat(itemUri);
+            const name = path.basename(itemUri.path);
             
-            const entries = await vscode.workspace.fs.readDirectory(itemUri);
-            for (const [childName] of entries) {
-                await processItem(vscode.Uri.joinPath(itemUri, childName));
+            if (stat.type === vscode.FileType.Directory) {
+                // Skip excluded directories
+                if (shouldExclude(name, excludePatterns)) {
+                    return;
+                }
+                
+                const entries = await vscode.workspace.fs.readDirectory(itemUri);
+                for (const [childName] of entries) {
+                    await processItem(vscode.Uri.joinPath(itemUri, childName));
+                }
+            } else if (stat.type === vscode.FileType.File) {
+                const fileView = await getFileView(itemUri);
+                if (fileView) {
+                    output += fileView;
+                }
             }
-        } else if (stat.type === vscode.FileType.File) {
-            const fileView = await getFileView(itemUri);
-            if (fileView) {
-                output += fileView;
-            }
+        } catch (error) {
+            console.error(`Error processing item: ${itemUri.fsPath}`, error);
+            // Continue with other files instead of failing the whole operation
         }
     }
 
@@ -117,7 +230,7 @@ async function processDirectory(uri: vscode.Uri): Promise<string> {
     return output;
 }
 
-// New function to process all workspace folders
+// Function to process all workspace folders
 async function processAllWorkspaceFolders(): Promise<string> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     
@@ -151,7 +264,20 @@ export function activate(context: vscode.ExtensionContext) {
                 } else {
                     const fileView = await getFileView(uri);
                     if (!fileView) {
-                        throw new Error('Binary or unreadable file');
+                        // Improved error message with more context
+                        const fileName = path.basename(uri.path);
+                        const extension = path.extname(uri.path).toLowerCase();
+                        
+                        if (BINARY_FILE_EXTENSIONS.includes(extension)) {
+                            vscode.window.showWarningMessage(
+                                `Skipped "${fileName}" as it's a binary file type (.${extension}).`
+                            );
+                        } else {
+                            vscode.window.showWarningMessage(
+                                `Skipped "${fileName}" as it appears to be a binary or unreadable file.`
+                            );
+                        }
+                        return;
                     }
                     content = fileView;
                 }
@@ -168,7 +294,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    // Register the new command to copy all workspace folders
+    // Register the command to copy all workspace folders
     const copyAllCommand = vscode.commands.registerCommand(
         'coby.copyAllWorkspaces',
         async () => {
