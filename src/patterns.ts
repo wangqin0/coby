@@ -29,8 +29,6 @@ export const DEFAULT_EXCLUSION_PATTERNS = [
     'gradlew.bat',
     '_deps',
     
-    // Lock files are handled in LOCK_FILES array
-    
     // Log files
     'yarn-error.log',
     'npm-debug.log',
@@ -43,9 +41,6 @@ export const DEFAULT_EXCLUSION_PATTERNS = [
     'yarn-debug.log*',
     'yarn-error.log*',
     'lerna-debug.log*',
-    
-    // Package files - moved to always include array
-    // 'package.json',
     
     // Temporary and output directories
     'output',
@@ -63,6 +58,8 @@ export const DEFAULT_EXCLUSION_PATTERNS = [
     '.coverage',
     'report',
     'reports',
+    'result',
+    'results',  // Added 'results' here
     'test-results',
     'test-output',
     'junit-reports',
