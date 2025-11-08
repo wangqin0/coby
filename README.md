@@ -29,10 +29,10 @@ git clone https://github.com/wangqin0/coby.git
 cd coby
 
 # Install dependencies
-yarn install
+npm install
 
 # Compile the extension
-yarn compile
+npm run compile
 
 # Package the extension
 npx @vscode/vsce package
@@ -124,11 +124,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ```bash
 # Install dependencies
-yarn install
+npm install
 
 # Compile the extension
-yarn compile
+npm run compile
 
 # Watch for changes
-yarn watch
+npm run watch
 ```
